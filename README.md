@@ -15,4 +15,6 @@ Example:
 /usr/local/spark-1.5.1-bin-hadoop2.6/bin/spark-submit --jars flight_analysis.jar --class cs455.flightdata.spark.WordCount flight_analysis.jar hdfs://salem.cs.colostate.edu:50000/data/flight_data
 
 Note:
-Running wordCount on the Flight Data hasn't been successful yet; currently looking
+WordCount works with books taken from Assignment 3 instructions
+Running wordCount on the Flight Data hasn't been successful yet; currently looking into it
+This may have to do with the dataset
