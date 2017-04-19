@@ -6,7 +6,7 @@
     <property name="src" location="src"/>
     <property name="build" location="build"/>
     <property name="dist" location="dist"/>
-    <property name="lib.dir" location="/Users/bdeininger/Downloads/spark-1.5.1-bin-hadoop2.6/lib"/>
+    <property name="lib.dir" location="/usr/local/spark-1.5.1-bin-hadoop2.6/lib"/>
 
     <target name="init">
         <!-- Create the time stamp -->
