@@ -1,4 +1,4 @@
-package cs455.tp.spark;
+package cs455.flightdata.spark;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.*;
