@@ -22,7 +22,7 @@ This may have to do with the dataset
 ### Run Flight Data Analysis
 I'm starting to look at the charting, so wanted some realistic data to work with.  I ran Ben's initial exmple:
 
-``` nohup spark-submit --master yarn --class cs455.flightdata.spark.FlightDataAnalysis flight_analysis.jar /data/flightdata 2>error.txt 1> flightdataanalysis.txt &```
+``` nohup spark-submit --master yarn --class cs455.flightdata.spark.FlightDelayAnalysis flight_analysis.jar /data/flightdata 2>error.txt 1> flightdataanalysis.txt &```
 
 Notes:
 
