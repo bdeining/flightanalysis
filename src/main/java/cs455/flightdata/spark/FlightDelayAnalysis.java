@@ -50,18 +50,23 @@ import scala.Tuple2;
  */
 
 /*
-The most common cause for flight cancellations
 Time analysis of flight delays:
 Day of week
 Day of month
 Month of year
+Flight Delays Per Year Percentage
+
+
+The most common cause for flight cancellations
 Daylight Savings crossover dates
 Airport analysis of flight delays
 Airports with most and fewest delays
+
 Average delay by airport
 Flight delay reasons
 Most common reasons for flight delays
 Average time delay for each delay reason
+
 Airplane model delays
 Airplane models with most and fewest delays
 Impacts of mergers on delays and cancellations
@@ -75,6 +80,8 @@ public class FlightDelayAnalysis {
     private static final Pattern COMMA = Pattern.compile(",");
 
     private static final int DELAY_TIME_MINUTES_INDEX = 15;
+
+    private static final int DAY_OF_MONTH_INDEX = 2;
 
     private static final int DAY_OF_WEEK_INDEX = 3;
 
@@ -95,6 +102,8 @@ public class FlightDelayAnalysis {
 
         processFlightDelayPerNumberOfFlights(lines, outputDir);
         processFlightDelaysPerDayOfTheWeek(lines, outputDir);
+        processFlightDelaysPerDayOfTheMonth(lines, outputDir);
+        processFlightDelaysPerMonth(lines, outputDir);
 
         ctx.stop();
     }
@@ -125,13 +134,12 @@ public class FlightDelayAnalysis {
         JavaPairRDD<String, Tuple2<Long, Long>> flightCounts = reducedCommercialFlightDelay.join(
                 reducedNumberOfFlights);
 
-        SparkUtils.saveRDDToTextFile(flightCounts,
-                outputDir + File.separator + "flight_delay_per_number_of_flights.txt");
+        SparkUtils.saveCoalescedRDDToTextFile(flightCounts,
+                outputDir + File.separator + "flight_delay_per_number_of_flights");
     }
 
     private static void processFlightDelaysPerDayOfTheWeek(JavaRDD<String> lines,
             String outputDir) {
-
         List<String> dayOfWeek = Arrays.asList("Monday",
                 "Tuesday",
                 "Wednesday",
@@ -140,18 +148,54 @@ public class FlightDelayAnalysis {
                 "Saturday",
                 "Sunday");
 
+        processFlightDelaysGeneric(lines, dayOfWeek,
+                outputDir + File.separator + "flight_delay_per_day_of_week",
+                DAY_OF_WEEK_INDEX);
+    }
+
+    private static void processFlightDelaysPerDayOfTheMonth(JavaRDD<String> lines,
+            String outputDir) {
+        processFlightDelaysGeneric(lines, null, outputDir + File.separator + "flight_delay_per_day_of_month", DAY_OF_MONTH_INDEX);
+    }
+
+    private static void processFlightDelaysPerMonth(JavaRDD<String> lines,
+            String outputDir) {
+        List<String> dayOfWeek = Arrays.asList("January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December"
+        );
+        processFlightDelaysGeneric(lines, dayOfWeek, outputDir + File.separator + "flight_delay_per_month", DAY_OF_MONTH_INDEX);
+    }
+
+
+    private static void processFlightDelaysGeneric(JavaRDD<String> lines, List<String> optionalStringMapping,
+            String outputDir, int index) {
+
         JavaPairRDD<String, Long> commercialFlightDelayCount = lines.mapToPair(string -> {
             String[] flightData = string.split(COMMA.pattern());
-            Integer dayOfTheWeek = Integer.parseInt(flightData[DAY_OF_WEEK_INDEX]);
-            return new Tuple2<>(dayOfWeek.get(dayOfTheWeek - 1), 1L);
+
+            if (optionalStringMapping != null) {
+                Integer stringIndex = Integer.parseInt(flightData[index]);
+                return new Tuple2<>(optionalStringMapping.get(stringIndex - 1), 1L);
+            } else {
+                return new Tuple2<>(flightData[index], 1L);
+            }
         });
 
         JavaPairRDD<String, Long> reducedCommercialFlightDelayCount =
                 commercialFlightDelayCount.reduceByKey((integer1, integer2) -> (integer1
                         + integer2));
 
-        SparkUtils.saveRDDToTextFile(reducedCommercialFlightDelayCount,
-                outputDir + File.separator + "flight_delay_per_day_of_week.txt");
+        SparkUtils.saveCoalescedRDDToTextFile(reducedCommercialFlightDelayCount, outputDir);
     }
 
 }

@@ -4,8 +4,8 @@ import org.apache.spark.api.java.JavaPairRDD;
 
 public class SparkUtils {
 
-    public static void saveRDDToTextFile(JavaPairRDD<?, ?> javaPairRDD, String outputDirectory) {
-        javaPairRDD.saveAsTextFile(outputDirectory);
+    public static void saveCoalescedRDDToTextFile(JavaPairRDD<?, ?> javaPairRDD, String outputDirectory) {
+        javaPairRDD.coalesce(1).saveAsTextFile(outputDirectory);
     }
 
 }
