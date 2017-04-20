@@ -50,36 +50,35 @@ import scala.Tuple2;
  */
 
 /*
-Time analysis of flight delays:
-Day of week
-Day of month
-Month of year
-Flight Delays Per Year Percentage
+    Delay per day of week
+    Delay per day of month
+    Delay per month of year
+    Flight Delays Per Year Percentage
 
+    The most common cause for flight cancellations
+    Daylight Savings crossover dates
+    Airport analysis of flight delays
+    Airports with most and fewest delays
 
-The most common cause for flight cancellations
-Daylight Savings crossover dates
-Airport analysis of flight delays
-Airports with most and fewest delays
+    Average delay by airport
+    Flight delay reasons
+    Most common reasons for flight delays
+    Average time delay for each delay reason
 
-Average delay by airport
-Flight delay reasons
-Most common reasons for flight delays
-Average time delay for each delay reason
+    Airplane model delays
+    Airplane models with most and fewest delays
+    Impacts of mergers on delays and cancellations
+    Impact of flight distance/destination (ex. Flights to Europe) on delay frequency
 
-Airplane model delays
-Airplane models with most and fewest delays
-Impacts of mergers on delays and cancellations
-Impact of flight distance/destination (ex. Flights to Europe) on delay frequency
-
-
- */
+*/
 
 public class FlightDelayAnalysis {
 
     private static final Pattern COMMA = Pattern.compile(",");
 
     private static final int DELAY_TIME_MINUTES_INDEX = 15;
+
+    private static final int MONTH_INDEX = 1;
 
     private static final int DAY_OF_MONTH_INDEX = 2;
 
@@ -114,7 +113,7 @@ public class FlightDelayAnalysis {
             String[] flightData = string.split(COMMA.pattern());
             try {
                 Long delayTime = Long.parseLong(flightData[DELAY_TIME_MINUTES_INDEX]);
-                return new Tuple2<>(flightData[YEAR_INDEX], delayTime);
+                return new Tuple2<>(flightData[YEAR_INDEX], delayTime > 15 ? delayTime : 0);
             } catch (NumberFormatException e) {
                 return new Tuple2<>(flightData[YEAR_INDEX], 0L);
             }
@@ -160,7 +159,7 @@ public class FlightDelayAnalysis {
 
     private static void processFlightDelaysPerMonth(JavaRDD<String> lines,
             String outputDir) {
-        List<String> dayOfWeek = Arrays.asList("January",
+        List<String> months = Arrays.asList("January",
                 "February",
                 "March",
                 "April",
@@ -173,7 +172,7 @@ public class FlightDelayAnalysis {
                 "November",
                 "December"
         );
-        processFlightDelaysGeneric(lines, dayOfWeek, outputDir + File.separator + "flight_delay_per_month", DAY_OF_MONTH_INDEX);
+        processFlightDelaysGeneric(lines, months, outputDir + File.separator + "flight_delay_per_month", MONTH_INDEX);
     }
 
 
