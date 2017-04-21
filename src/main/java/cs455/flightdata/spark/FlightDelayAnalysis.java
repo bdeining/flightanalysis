@@ -12,66 +12,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 
 import scala.Tuple2;
 
-/*
-
-    Name	Description
-    1	Year	1987-2008
-    2	Month	1-12
-    3	DayofMonth	1-31
-    4	DayOfWeek	1 (Monday) - 7 (Sunday)
-    5	DepTime	actual departure time (local, hhmm)
-    6	CRSDepTime	scheduled departure time (local, hhmm)
-    7	ArrTime	actual arrival time (local, hhmm)
-    8	CRSArrTime	scheduled arrival time (local, hhmm)
-    9	UniqueCarrier	unique carrier code
-    10	FlightNum	flight number
-    11	TailNum	plane tail number
-    12	ActualElapsedTime	in minutes
-    13	CRSElapsedTime	in minutes
-    14	AirTime	in minutes
-    15	ArrDelay	arrival delay, in minutes
-    16	DepDelay	departure delay, in minutes
-    17	Origin	origin IATA airport code
-    18	Dest	destination IATA airport code
-    19	Distance	in miles
-    20	TaxiIn	taxi in time, in minutes
-    21	TaxiOut	taxi out time in minutes
-    22	Cancelled	was the flight cancelled?
-    23	CancellationCode	reason for cancellation (A = carrier, B = weather, C = NAS, D = security)
-    24	Diverted	1 = yes, 0 = no
-    25	CarrierDelay	in minutes
-    26	WeatherDelay	in minutes
-    27	NASDelay	in minutes
-    28	SecurityDelay	in minutes
-    29	LateAircraftDelay	in minutes
-
-    1987,10,14,3,741,730,912,849,PS,1451,NA,91,79,NA,23,11,SAN,SFO,447,NA,NA, 0,NA ,0,NA,NA,NA,NA,NA
-    1   , 2, 3,4,  5,  6,  7,  8, 9,  10,11,12,13,14,15,16, 17, 18, 19,20,21,22,23,24,25,27,27,28,29
- */
-
-/*
-    Delay per day of week
-    Delay per day of month
-    Delay per month of year
-    Flight Delays Per Year Percentage
-
-    The most common cause for flight cancellations
-    Daylight Savings crossover dates
-    Airport analysis of flight delays
-    Airports with most and fewest delays
-
-    Average delay by airport
-    Flight delay reasons
-    Most common reasons for flight delays
-    Average time delay for each delay reason
-
-    Airplane model delays
-    Airplane models with most and fewest delays
-    Impacts of mergers on delays and cancellations
-    Impact of flight distance/destination (ex. Flights to Europe) on delay frequency
-
-*/
-
 public class FlightDelayAnalysis {
 
     private static final Pattern COMMA = Pattern.compile(",");
@@ -133,7 +73,7 @@ public class FlightDelayAnalysis {
         JavaPairRDD<String, Tuple2<Long, Long>> flightCounts = reducedCommercialFlightDelay.join(
                 reducedNumberOfFlights);
 
-        SparkUtils.saveCoalescedRDDToTextFile(flightCounts,
+        SparkUtils.saveCoalescedTupleRDDToCsvFile(flightCounts,
                 outputDir + File.separator + "flight_delay_per_number_of_flights");
     }
 
@@ -194,7 +134,7 @@ public class FlightDelayAnalysis {
                 commercialFlightDelayCount.reduceByKey((integer1, integer2) -> (integer1
                         + integer2));
 
-        SparkUtils.saveCoalescedRDDToTextFile(reducedCommercialFlightDelayCount, outputDir);
+        SparkUtils.saveCoalescedLongRDDToCsvFile(reducedCommercialFlightDelayCount, outputDir);
     }
 
 }
