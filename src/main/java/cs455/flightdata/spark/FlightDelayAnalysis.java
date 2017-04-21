@@ -75,6 +75,9 @@ public class FlightDelayAnalysis {
 
         SparkUtils.saveCoalescedTupleRDDToCsvFile(flightCounts,
                 outputDir + File.separator + "flight_delay_per_number_of_flights");
+
+        SparkUtils.saveCoalescedRDDToJsonFile(flightCounts,
+                outputDir + File.separator + "flight_delay_per_number_of_flights");
     }
 
     private static void processFlightDelaysPerDayOfTheWeek(JavaRDD<String> lines,
@@ -87,18 +90,21 @@ public class FlightDelayAnalysis {
                 "Saturday",
                 "Sunday");
 
-        processFlightDelaysGeneric(lines, dayOfWeek,
+        processFlightDelaysGeneric(lines,
+                dayOfWeek,
                 outputDir + File.separator + "flight_delay_per_day_of_week",
                 DAY_OF_WEEK_INDEX);
     }
 
     private static void processFlightDelaysPerDayOfTheMonth(JavaRDD<String> lines,
             String outputDir) {
-        processFlightDelaysGeneric(lines, null, outputDir + File.separator + "flight_delay_per_day_of_month", DAY_OF_MONTH_INDEX);
+        processFlightDelaysGeneric(lines,
+                null,
+                outputDir + File.separator + "flight_delay_per_day_of_month",
+                DAY_OF_MONTH_INDEX);
     }
 
-    private static void processFlightDelaysPerMonth(JavaRDD<String> lines,
-            String outputDir) {
+    private static void processFlightDelaysPerMonth(JavaRDD<String> lines, String outputDir) {
         List<String> months = Arrays.asList("January",
                 "February",
                 "March",
@@ -110,14 +116,15 @@ public class FlightDelayAnalysis {
                 "September",
                 "October",
                 "November",
-                "December"
-        );
-        processFlightDelaysGeneric(lines, months, outputDir + File.separator + "flight_delay_per_month", MONTH_INDEX);
+                "December");
+        processFlightDelaysGeneric(lines,
+                months,
+                outputDir + File.separator + "flight_delay_per_month",
+                MONTH_INDEX);
     }
 
-
-    private static void processFlightDelaysGeneric(JavaRDD<String> lines, List<String> optionalStringMapping,
-            String outputDir, int index) {
+    private static void processFlightDelaysGeneric(JavaRDD<String> lines,
+            List<String> optionalStringMapping, String outputDir, int index) {
 
         JavaPairRDD<String, Long> commercialFlightDelayCount = lines.mapToPair(string -> {
             String[] flightData = string.split(COMMA.pattern());
@@ -135,6 +142,7 @@ public class FlightDelayAnalysis {
                         + integer2));
 
         SparkUtils.saveCoalescedLongRDDToCsvFile(reducedCommercialFlightDelayCount, outputDir);
-    }
 
+        SparkUtils.saveCoalescedRDDToJsonFile(reducedCommercialFlightDelayCount, outputDir);
+    }
 }
