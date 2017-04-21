@@ -1,4 +1,10 @@
-For Local Development :
+### Authors
+Ben Deininger
+Nicholas Malensek
+David Edwards
+Stephen Rhoads
+
+### For Local Development :
 Download Spark 1.5.1 for Hadoop 2.6 (http://spark.apache.org/downloads.html)
 Add Jars to IDE
 
