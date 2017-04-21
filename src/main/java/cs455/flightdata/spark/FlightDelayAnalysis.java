@@ -133,7 +133,7 @@ public class FlightDelayAnalysis {
         JavaPairRDD<String, Tuple2<Long, Long>> flightCounts = reducedCommercialFlightDelay.join(
                 reducedNumberOfFlights);
 
-        SparkUtils.saveCoalescedRDDToTextFile(flightCounts,
+        SparkUtils.saveCoalescedRDDToJsonFile(flightCounts,
                 outputDir + File.separator + "flight_delay_per_number_of_flights");
     }
 
@@ -194,7 +194,8 @@ public class FlightDelayAnalysis {
                 commercialFlightDelayCount.reduceByKey((integer1, integer2) -> (integer1
                         + integer2));
 
-        SparkUtils.saveCoalescedRDDToTextFile(reducedCommercialFlightDelayCount, outputDir);
+        //SparkUtils.saveCoalescedRDDToTextFile(reducedCommercialFlightDelayCount, outputDir);
+        SparkUtils.saveCoalescedRDDToJsonFile(reducedCommercialFlightDelayCount, outputDir);
     }
 
 }
