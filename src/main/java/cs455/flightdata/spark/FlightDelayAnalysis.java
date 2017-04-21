@@ -131,9 +131,17 @@ public class FlightDelayAnalysis {
 
             if (optionalStringMapping != null) {
                 Integer stringIndex = Integer.parseInt(flightData[index]);
-                return new Tuple2<>(optionalStringMapping.get(stringIndex - 1), 1L);
+                if (hasDelay(flightData)) {
+                    return new Tuple2<>(optionalStringMapping.get(stringIndex - 1), 1L);
+                } else {
+                    return new Tuple2<>(optionalStringMapping.get(stringIndex - 1), 0L);
+                }
             } else {
-                return new Tuple2<>(flightData[index], 1L);
+                if (hasDelay(flightData)) {
+                    return new Tuple2<>(flightData[index], 1L);
+                } else {
+                    return new Tuple2<>(flightData[index], 0L);
+                }
             }
         });
 
@@ -144,5 +152,14 @@ public class FlightDelayAnalysis {
         SparkUtils.saveCoalescedLongRDDToCsvFile(reducedCommercialFlightDelayCount, outputDir);
 
         SparkUtils.saveCoalescedRDDToJsonFile(reducedCommercialFlightDelayCount, outputDir);
+    }
+
+    private static boolean hasDelay(String[] flightData) {
+        try {
+            Long delayTime = Long.parseLong(flightData[DELAY_TIME_MINUTES_INDEX]);
+            return delayTime > 15;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }
