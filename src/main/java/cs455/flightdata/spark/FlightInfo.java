@@ -9,11 +9,13 @@ import java.util.Map;
  */
 public class FlightInfo implements Serializable {
     String cancelCode;
-    String isCancelled;
+    Integer isCancelled;
     String year;
     String month;
     String uniqueCarrierCode;
     String flightDelay;
+    String tailNum;
+    String distance;
 
     private static final long serialVersionUID = 1L;
     public static Map<String, String> codeToStringMap = new HashMap<>();
@@ -40,12 +42,16 @@ public class FlightInfo implements Serializable {
         this.cancelCode = cancelCode.toUpperCase();
     }
 
-    public String getIsCancelled() {
+    public Integer getIsCancelled() {
         return isCancelled;
     }
 
     public void setIsCancelled(String isCancelled) {
-        this.isCancelled = isCancelled;
+        try {
+            this.isCancelled = Integer.parseInt(isCancelled);
+        } catch (NumberFormatException nfe) {
+            this.isCancelled = 0;
+        }
     }
 
     public String getYear() {
@@ -78,5 +84,30 @@ public class FlightInfo implements Serializable {
 
     public void setFlightDelay(String flightDelay) {
         this.flightDelay = flightDelay;
+    }
+
+    public String getTailNum() {
+        return tailNum;
+    }
+
+    public void setTailNum(String tailNum) {
+        this.tailNum = tailNum;
+    }
+
+    public String getDistance() {
+        return distance;
+    }
+
+    public void setDistance(String distance) {
+        this.distance = distance;
+    }
+
+    public static boolean hasDelay(String flightDelay) {
+        try {
+            Long delayTime = Long.parseLong(flightDelay);
+            return delayTime > 15;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

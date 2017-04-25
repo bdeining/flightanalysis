@@ -10,10 +10,32 @@ import org.apache.spark.api.java.JavaRDD;
 
 import com.google.gson.Gson;
 
+import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;
 import scala.Tuple3;
 
 public class SparkUtils {
+
+    private static final int DELAY_TIME_MINUTES_INDEX = 15;
+
+    private static final int MONTH_INDEX = 1;
+
+    private static final int DAY_OF_MONTH_INDEX = 2;
+
+    private static final int DAY_OF_WEEK_INDEX = 3;
+
+    private static final int YEAR_INDEX = 0;
+
+    private static final int yearIndex = 0;
+
+    private static final int uniqueCarrierCodeIndex = 8;
+
+    private static final int tailNumIndex = 10;
+
+    private static final int distanceIndex = 18;
+
+    private static final int isCancelledIndex = 21;
+    private static final int cancellationCode = 22;
 
     public static void saveCoalescedTupleRDDToCsvFile(
             JavaPairRDD<String, Tuple2<Long, Long>> javaPairRDD, String outputDirectory) {
@@ -58,5 +80,34 @@ public class SparkUtils {
 
         stringJavaRDD.coalesce(1).saveAsTextFile(outputDirectory);
 
+    }
+
+    public static JavaRDD<FlightInfo> getFlightInfoRddFromLines(JavaRDD<String> lines) {
+
+        JavaRDD<FlightInfo> flightInfo = lines.map(
+                (Function<String, FlightInfo>) s -> {
+                    String[] fields = s.split(",");
+
+                    // create flight info obj
+                    FlightInfo fci = new FlightInfo();
+                    fci.setYear(fields[yearIndex]);
+                    fci.setMonth(fields[MONTH_INDEX]);
+
+                    fci.setCancelCode(fields[cancellationCode]);
+                    fci.setIsCancelled(fields[isCancelledIndex]);
+
+                    fci.setFlightDelay(fields[DELAY_TIME_MINUTES_INDEX]);
+
+                    fci.setUniqueCarrierCode(fields[uniqueCarrierCodeIndex]);
+
+                    fci.setTailNum(fields[tailNumIndex].trim());
+
+                    fci.setDistance(fields[distanceIndex]);
+
+                    return fci;
+                }
+        );
+
+        return flightInfo;
     }
 }
