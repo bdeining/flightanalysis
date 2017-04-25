@@ -81,7 +81,7 @@ public class FlightDelayAnalysis {
         flightCancellation.executeAnalysis(ctx, flightInfo, outputDir);
 
         NumberOfAirlinesDelay noad = new NumberOfAirlinesDelay();
-        noad.executeAnalysis(ctx, flightInfo, outputDir);
+        //noad.executeAnalysis(ctx, flightInfo, outputDir, );
 
         ctx.stop();
     }

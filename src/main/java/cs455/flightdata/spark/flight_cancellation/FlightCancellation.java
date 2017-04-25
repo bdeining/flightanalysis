@@ -24,7 +24,7 @@ import java.util.List;
  *
  * relevant indexes are: 21 - isCancelled == 1, 22 - cancellation code: A-Carrier, B-Weather, C-National Air System
  */
-public class FlightCancellation implements Serializable {
+public class FlightCancellation implements FlightAnalysisIface, Serializable {
 
     public static void main(String[] args) {
         if (args.length != 2) {
