@@ -49,11 +49,14 @@ import java.util.regex.Pattern;
 public class FlightDelayReasons
 {
     private static final Pattern COMMA = Pattern.compile(",");
+    private static final int CANCELLATION_CODE_INDEX = 22;
     private static final int DELAY_TIME_MINUTES_INDEX = 15;
+    private static final int YEAR_INDEX = 0;
 
     public static void main(String[] args)
     {
-        if (args.length != 2) {
+        if (args.length != 2)
+        {
             System.err.println("Usage: FlightDelayReasons <input-directory> <output-directory>");
             System.exit(1);
         }
@@ -65,27 +68,68 @@ public class FlightDelayReasons
         JavaRDD<String> lines = ctx.textFile(args[0], 1);
 
         processFlightDelayReasons(lines, outputDir);
+        processFlightDelayAverageDelay(lines, outputDir);
 
         ctx.stop();
     }
 
     private static void processFlightDelayReasons(JavaRDD<String> lines, String outputDir)
     {
-        JavaPairRDD<String, Integer> commercialFlightDelay = lines.mapToPair(string -> {
+        JavaPairRDD<String, Integer> commercialFlightDelay = lines.mapToPair(string ->
+        {
             String[] flightData = string.split(COMMA.pattern());
             try
             {
-                return new Tuple2<>(flightData[23],1 );
+                return new Tuple2<>(flightData[CANCELLATION_CODE_INDEX], 1);
             }
             catch (NumberFormatException e)
             {
-                return new Tuple2<>(flightData[23], 0);
+                return new Tuple2<>(flightData[CANCELLATION_CODE_INDEX], 0);
             }
         });
 
-        JavaPairRDD<String, Integer> reducedReasons = commercialFlightDelay.reduceByKey((int1, int2)->(int1+int2));
+        JavaPairRDD<String, Integer> reducedReasons = commercialFlightDelay.reduceByKey((int1, int2) -> (int1 + int2));
         SparkUtils.saveCoalescedRDDToJsonFile(reducedReasons,
                 outputDir + File.separator + "flight_delay_reasons");
+
+    }
+
+    private static void processFlightDelayAverageDelay(JavaRDD<String> lines, String outputDir)
+    {
+        JavaPairRDD<String, Long> commercialFlightDelay = lines.mapToPair(string ->
+        {
+            String[] flightData = string.split(COMMA.pattern());
+            try
+            {
+                Long delayTime = Long.parseLong(flightData[DELAY_TIME_MINUTES_INDEX]);
+                return new Tuple2<>(flightData[CANCELLATION_CODE_INDEX], delayTime);
+            }
+            catch (NumberFormatException e)
+            {
+                return new Tuple2<>(flightData[CANCELLATION_CODE_INDEX], 0L);
+            }
+        });
+
+        JavaPairRDD<String, Long> reducedReasons = commercialFlightDelay.reduceByKey((long1, long2) -> (long1 + long2));
+
+        JavaPairRDD<String, Long> commercialFlightCount = lines.mapToPair(string ->
+        {
+            String[] flightData = string.split(COMMA.pattern());
+            try
+            {
+                return new Tuple2<>(flightData[CANCELLATION_CODE_INDEX], 1L);
+            }
+            catch (NumberFormatException e)
+            {
+                return new Tuple2<>(flightData[CANCELLATION_CODE_INDEX], 0L);
+            }
+        });
+        JavaPairRDD<String, Long> reducedCount = commercialFlightCount.reduceByKey((int1, int2) -> (int1 + int2));
+        JavaPairRDD<String, Tuple2<Long, Long>> averageCounts = reducedReasons.join(
+                reducedCount);
+
+        SparkUtils.saveCoalescedRDDToJsonFile(averageCounts,
+                outputDir + File.separator + "flight_average_delay_by_reason");
 
     }
 }
