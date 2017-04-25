@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaRDD;
 import com.google.gson.Gson;
 
 import scala.Tuple2;
+import scala.Tuple3;
 
 public class SparkUtils {
 
@@ -45,5 +46,17 @@ public class SparkUtils {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void saveCoalescedTuple3LongToCsvFile(
+            JavaPairRDD<Tuple3<String, String, String>, Long> tuple3LongRdd, String outputDirectory) {
+
+        JavaRDD<String> stringJavaRDD = tuple3LongRdd.map(stringTuple3Tuple ->
+            stringTuple3Tuple._1()._1() + "," + stringTuple3Tuple._1()._2() + "," + stringTuple3Tuple._1()._3() + ","
+                    + stringTuple3Tuple._2()
+        );
+
+        stringJavaRDD.coalesce(1).saveAsTextFile(outputDirectory);
+
     }
 }

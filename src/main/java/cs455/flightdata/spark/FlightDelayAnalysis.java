@@ -5,11 +5,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import cs455.flightdata.spark.flight_cancellation.FlightCancellation;
+import cs455.flightdata.spark.number_airlines_impact.NumberOfAirlinesDelay;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;
 
 public class FlightDelayAnalysis {
@@ -25,6 +28,13 @@ public class FlightDelayAnalysis {
     private static final int DAY_OF_WEEK_INDEX = 3;
 
     private static final int YEAR_INDEX = 0;
+
+    private static final int yearIndex = 0;
+
+    private static final int uniqueCarrierCodeIndex = 8;
+
+    private static final int isCancelledIndex = 21;
+    private static final int cancellationCode = 22;
 
     public static void main(String[] args) throws Exception {
 
@@ -43,6 +53,35 @@ public class FlightDelayAnalysis {
         processFlightDelaysPerDayOfTheWeek(lines, outputDir);
         processFlightDelaysPerDayOfTheMonth(lines, outputDir);
         processFlightDelaysPerMonth(lines, outputDir);
+
+
+        // flight cancellation
+
+        JavaRDD<FlightInfo> flightInfo = lines.map(
+                (Function<String, FlightInfo>) s -> {
+                    String[] fields = s.split(",");
+
+                    // create flight info obj
+                    FlightInfo fci = new FlightInfo();
+                    fci.setYear(fields[yearIndex]);
+                    fci.setMonth(fields[MONTH_INDEX]);
+
+                    fci.setCancelCode(fields[cancellationCode]);
+                    fci.setIsCancelled(fields[isCancelledIndex]);
+
+                    fci.setFlightDelay(fields[DELAY_TIME_MINUTES_INDEX]);
+
+                    fci.setUniqueCarrierCode(fields[uniqueCarrierCodeIndex]);
+
+                    return fci;
+                }
+        );
+
+        FlightAnalysisIface flightCancellation = new FlightCancellation();
+        flightCancellation.executeAnalysis(ctx, flightInfo, outputDir);
+
+        NumberOfAirlinesDelay noad = new NumberOfAirlinesDelay();
+        noad.executeAnalysis(ctx, flightInfo, outputDir);
 
         ctx.stop();
     }
