@@ -1,6 +1,8 @@
 package cs455.flightdata.spark;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.spark.SparkConf;
@@ -8,6 +10,8 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import org.apache.spark.api.java.function.PairFlatMapFunction;
+import scala.Function2;
 import scala.Tuple2;
 
 public class FlightDelayReasons {
@@ -38,8 +42,8 @@ public class FlightDelayReasons {
         JavaRDD<String> lines = ctx.textFile(args[0], 1);
 
         processFlightCancellationReasons(lines, outputDir);
-        processFlightDelayAverageDelay(lines, outputDir);
         processFlightDelayCounts(lines, outputDir);
+        testFlightDelay(lines, outputDir);
 
         ctx.stop();
     }
@@ -91,63 +95,52 @@ public class FlightDelayReasons {
 
     }
 
-    private static void processFlightDelayAverageDelay(JavaRDD<String> lines, String outputDir) {
+    private static void testFlightDelay(JavaRDD<String> lines, String outputDir)
+    {
 
-        JavaPairRDD<String, Tuple2<Long, Long>> averageCarrierDelay = processDelay(lines,
-                CARRIER_DELAY_MINUTES_INDEX,
-                "Carrier Delay");
-        JavaPairRDD<String, Tuple2<Long, Long>> averageWeatherDelay = processDelay(lines,
-                WEATHER_DELAY_MINUTES_INDEX,
-                "Weather Delay");
-        JavaPairRDD<String, Tuple2<Long, Long>> averageNASDelay = processDelay(lines,
-                NAS_DELAY_MINUTES_INDEX,
-                "National Airspace System Delay");
-        JavaPairRDD<String, Tuple2<Long, Long>> averageSecurityDelay = processDelay(lines,
-                SECURITY_DELAY_MINUTES_INDEX,
-                "Security Delay");
-        JavaPairRDD<String, Tuple2<Long, Long>> averageLateAircraftDelay = processDelay(lines,
-                LATE_AIRCRAFT_DELAY_MINUTES_INDEX,
-                "Late Aircraft Delay");
+        JavaPairRDD<String, Tuple2<Long,Long>> allDelays = processAllDelays(lines);
+        JavaPairRDD<String, Tuple2<Long,Long>> reducedDelays = allDelays.reduceByKey((x,y) -> new Tuple2<>((x._1+y._1),(x._2+y._2)));
 
-        JavaPairRDD<String, Tuple2<Long, Long>> allDelays = averageCarrierDelay.union(
-                averageWeatherDelay)
-                .union(averageNASDelay)
-                .union(averageSecurityDelay)
-                .union(averageLateAircraftDelay);
 
-        SparkUtils.saveCoalescedRDDToJsonFile(allDelays,
+        SparkUtils.saveCoalescedRDDToJsonFile(reducedDelays,
                 outputDir + File.separator + "flight_average_delay_by_reason");
+
     }
 
-    private static JavaPairRDD<String, Tuple2<Long, Long>> processDelay(JavaRDD<String> lines,
-            int index, String dataName) {
-        JavaPairRDD<String, Long> flightDelay =
-                lines.mapToPair(string -> processGenericDelay(string, index, dataName));
+    private static JavaPairRDD<String, Tuple2<Long, Long>> processAllDelays(JavaRDD<String> lines)
+    {
 
-        JavaPairRDD<String, Long> reducedFlightDelay = flightDelay.reduceByKey((long1, long2) -> (
-                long1 + long2));
+        JavaPairRDD<String,Tuple2<Long,Long>> stuff = lines.flatMapToPair(new PairFlatMapFunction<String, String, Tuple2<Long, Long>>()
+        {
+            @Override
+            public Iterable<Tuple2<String, Tuple2<Long, Long>>> call(String s) throws Exception
+            {
+                String[] flightData = s.split(COMMA.pattern());
+                List<Tuple2<String, Tuple2<Long, Long>>> results = new ArrayList<>();
+                results.add(getSingleReason(flightData[CARRIER_DELAY_MINUTES_INDEX],"Carrier Delay"));
+                results.add(getSingleReason(flightData[WEATHER_DELAY_MINUTES_INDEX], "Weather Delay"));
+                results.add(getSingleReason(flightData[NAS_DELAY_MINUTES_INDEX],"NAS Delay"));
+                results.add(getSingleReason(flightData[SECURITY_DELAY_MINUTES_INDEX], "Security Delay"));
+                results.add(getSingleReason(flightData[LATE_AIRCRAFT_DELAY_MINUTES_INDEX],"Late Aircraft Delay"));
+                return results;
+            }
+        });
 
-        JavaPairRDD<String, Long> delayCount = lines.mapToPair(string -> processGenericCount(string,
-                index,
-                dataName));
-        JavaPairRDD<String, Long> reducedDelayCount = delayCount.reduceByKey((long1, long2) -> (
-                long1 + long2));
-
-        JavaPairRDD<String, Tuple2<Long, Long>> averageCarrierCounts = reducedFlightDelay.join(
-                reducedDelayCount);
-
-        return averageCarrierCounts;
+        return stuff;
     }
 
-    private static Tuple2<String, Long> processGenericDelay(String input, int dataPosition,
-            String dataName) {
-        String[] flightData = input.split(COMMA.pattern());
 
-        try {
-            Long delayTime = Long.parseLong(flightData[dataPosition]);
-            return new Tuple2<>(flightData[dataPosition], delayTime);
-        } catch (NumberFormatException e) {
-            return new Tuple2<>(flightData[dataPosition], 0L);
+
+    private static Tuple2<String,Tuple2<Long,Long>> getSingleReason(String data, String dataName)
+    {
+        try
+        {
+            Long delayTime = Long.parseLong(data);
+            return new Tuple2<>(dataName, new Tuple2<>(delayTime,1L));
+        }
+        catch (NumberFormatException e)
+        {
+            return new Tuple2<>(dataName, new Tuple2<>(0L,0L));
         }
 
     }
