@@ -16,26 +16,34 @@ http://stat-computing.org/dataexpo/2009/the-data.html
 
 Stage Data in Local Hadoop Cluster ($HADOOP_HOME/bin/hdfs dfs -put <path_to_data>)
 
-### Run Wordcount
-Example:
-/usr/local/spark-1.5.1-bin-hadoop2.6/bin/spark-submit --jars flight_analysis.jar --class cs455.flightdata.spark.WordCount flight_analysis.jar hdfs://salem.cs.colostate.edu:50000/data/flight_data
+The script load_flight_data_into_hdfs.sh loads all of the data into hdfs. The only modification the script
+may need is the destination for the files.
 
-Note:
-WordCount works with books taken from Assignment 3 instructions
-Running wordCount on the Flight Data hasn't been successful yet; currently looking into it
-This may have to do with the dataset
+For doing plane model analysis, an additional data set is needed.  Download the aircraft registry 'database' from
+https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download/ .
+Two files are needed from this set, MASTER.txt and ACFTREF.txt, and both will need the first row removed before being used.
+The first row contains column headers, and they aren't needed for the spark processing.
+
+Once these files are acquired and modified, put them into hdfs, but in a different folder that the flight data.
 
 ### Run Flight Data Analysis
-I'm starting to look at the charting, so wanted some realistic data to work with.  I ran Ben's initial exmple:
+Add /usr/local/spark-1.5.1-bin-hadoop2.6/bin/ to path.
 
-``` nohup spark-submit --master yarn --class cs455.flightdata.spark.FlightDelayAnalysis flight_analysis.jar /data/flightdata 2>error.txt 1> flightdataanalysis.txt &```
+Flight Cancellation: all time cancellation counts by cancellation code, cancellation reasons over time and cancellation counts by carrier code
 
-Notes:
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.flight_cancellation.FlightCancellation flight_analysis.jar <flight-data-input-dir> <output-dir> ```
 
-I had added /usr/local/spark-1.5.1-bin-hadoop2.6/bin/ to my path.
+Distance Impact: counts for delays and cancellations by distance grouping of 500 miles (0-500, 501-1000.... >5000)
 
-`nohup` ignores the terminal closing, so will continue running (with the &) when my computer sleeps.
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.distance_impact.DistanceImpact flight_analysis.jar <flight-data-input-dir> <output-dir> ```
 
-I redirect stderr to `error.txt` (lots of spark output), and the actual output to `flightdataanalysis.txt`.  
+Impacts of Active Airlines on Delays: counts by each month on how many flights occured, how many were delayed, and how many airlines flew at least once that month.
+Also provides information on delays by aircraft model.
+   
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.number_airlines_impact.NumberOfAirlinesDelay flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
 
-My data is stored in my hdfs cluster in /data/flightdata
+---- todo put in brief overview of areas your code ----
+
+### Visualization
+
+The csv and json files are parsed, lightly processed, and turned into graphs that can be viewed here: http://cs455.dev-cycle.com/

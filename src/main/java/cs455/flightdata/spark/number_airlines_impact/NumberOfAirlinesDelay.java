@@ -128,8 +128,7 @@ public class NumberOfAirlinesDelay implements Serializable {
         //
 
         JavaRDD<FlightInfo> occurancesOfDelays =
-                allFlightsInfo.filter((Function<FlightInfo, Boolean>) fci -> !fci.getFlightDelay()
-                                .equals("NA") && Long.parseLong(fci.getFlightDelay()) > 15);
+                allFlightsInfo.filter((Function<FlightInfo, Boolean>) fci -> hasDelay(fci.getFlightDelay()));
 
         JavaPairRDD<Tuple2<String, String>, Long> yearMonthDelayOccurances =
                 occurancesOfDelays.mapToPair((PairFunction<FlightInfo, Tuple2<String, String>, Long>) fci -> new Tuple2<>(
@@ -145,8 +144,6 @@ public class NumberOfAirlinesDelay implements Serializable {
         //                outputDir + File.separator + "number_of_delays_each_month-year");
 
         // join all flights in a month, number of airlines each month, and occurances of delays each month
-        //        JavaPairRDD<Tuple2<String, String>, Iterable<Long>> allFlightsNumAirlinesDelaysEachMonth =
-        //                numberFlightsEachMonth.union(totalsForEachMonth).union(yearMonthDelaySum).groupByKey();
 
         JavaPairRDD<Tuple2<String, String>, Iterable<Long>> allFlightsNumAirlinesDelaysEachMonth =
                 ctx.union(numberFlightsEachMonth, totalsForEachMonth, yearMonthDelaySum)
@@ -159,51 +156,65 @@ public class NumberOfAirlinesDelay implements Serializable {
         // models with most and fewest delays
         //
 
-        // get number of times each tail number has been delayed
-        JavaPairRDD<String, Long> tailNumDelayOccurances =
-                occurancesOfDelays.mapToPair((PairFunction<FlightInfo, String, Long>) fci -> {
-                            // trim N off of tail num
-                            String tailNum = fci.getTailNum();
+        // get all occurances of each tail number and see if there's a delay
+        JavaPairRDD<String, Tuple2<Long, Long>> allTailNumFlightsAndDelays = allFlightsInfo.mapToPair(
+                (PairFunction<FlightInfo, String, Tuple2<Long, Long>>) fci -> {
+                    String tailNum = parseTailNum(fci.getTailNum());
 
-                            // tail num data set doesn't have 'N' as prefix, so remove it
-                            if (tailNum != null && tailNum.length() >= 2) {
-                                if (!tailNum.equals("NA") && tailNum.charAt(0) == 'N') {
-                                    tailNum = tailNum.substring(1, tailNum.length());
-                                }
-                            }
+                    long delayCount = 0;
 
-                            return new Tuple2<>(tailNum, new Long(1));
-                        });
+                    if(hasDelay(fci.getFlightDelay())) {
+                        delayCount = 1L;
+                    }
 
-        // count them up
-        JavaPairRDD<String, Long> tailNumDelayCounts =
-                tailNumDelayOccurances.reduceByKey((l1, l2) -> l1 + l2);
+                    return new Tuple2<>(tailNum, new Tuple2<>(1L, delayCount));
+                }
+        ).reduceByKey(
+                (t1, t2) -> {
+                    long allTailOccurances = t1._1() + t2._1();
+                    long tailDelayOccurances = t1._2() + t2._2();
 
-        /*
-        SparkUtils.saveCoalescedLongRDDToCsvFile(tailNumDelayCounts,
-                outputDir + File.separator + "tail_num_occurances");
-
-        SparkUtils.saveCoalescedRDDToJsonFile(tailNumToModelRdd,
-                outputDir + File.separator + "tail_num_to_model");
-                */
+                    return new Tuple2<>(allTailOccurances, tailDelayOccurances);
+                }
+        );
 
         // join with tailNumToModelRdd
-        JavaPairRDD<String, Tuple2<Long, String>> tailNumDelaysAndModel = tailNumDelayCounts.join(
+        JavaPairRDD<String, Tuple2<Tuple2<Long, Long>, String>> tailNumDelaysAndModel = allTailNumFlightsAndDelays.join(
                 tailNumToModelRdd);
 
         // swap tail num for model
-        JavaPairRDD<String, Long> modelToDelays =
-                tailNumDelaysAndModel.mapToPair((PairFunction<Tuple2<String, Tuple2<Long, String>>, String, Long>) tailNumTup -> new Tuple2<>(
+        JavaPairRDD<String, Tuple2<Long, Long>> modelToDelays =
+                tailNumDelaysAndModel.mapToPair((PairFunction<Tuple2<String,
+                        Tuple2<Tuple2<Long, Long>, String>>, String, Tuple2<Long, Long>>) tailNumTup -> new Tuple2<>(
                                 tailNumTup._2()
                                         ._2(),
                                 tailNumTup._2()
                                         ._1()))
-                        .reduceByKey((l1, l2) -> l1 + l2);
+                        .reduceByKey((t1, t2) -> new Tuple2<>((t1._1() + t2._1()),
+                                (t1._2() + t2._2())));
 
         // save out
         SparkUtils.saveCoalescedRDDToJsonFile(modelToDelays,
                 outputDir + File.separator + "delays_by_model_number");
 
         return false;
+    }
+
+    private static String parseTailNum(String origTailNum) {
+        // trim N off of tail num
+        String tailNum = origTailNum;
+
+        // tail num data set doesn't have 'N' as prefix, so remove it
+        if (tailNum != null && tailNum.length() >= 2) {
+            if (!tailNum.equals("NA") && tailNum.charAt(0) == 'N') {
+                tailNum = tailNum.substring(1, tailNum.length());
+            }
+        }
+
+        return tailNum;
+    }
+
+    private static boolean hasDelay(String delayString) {
+        return (!delayString.equals("NA") && Long.parseLong(delayString) > 15);
     }
 }
