@@ -62,6 +62,13 @@ Delays on Daylight Saving crossover days, outputs the average delay (in minutes)
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.DSTAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
 
+Average Delays, and delay counts.
+
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.FlightDelayReasons flight_analysis.jar <flight-data-input-dir> <output-dir>```
+
+
 ### Visualization
 
 The csv and json files are parsed, lightly processed, and turned into graphs that can be viewed here: http://cs455.dev-cycle.com/
+
+Code for this site can be found in /FlightDataWeb

@@ -11,7 +11,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import scala.Function2;
 import scala.Tuple2;
 
 public class FlightDelayReasons {
@@ -43,37 +42,18 @@ public class FlightDelayReasons {
 
         processFlightCancellationReasons(lines, outputDir);
         processFlightDelayCounts(lines, outputDir);
-        testFlightDelay(lines, outputDir);
+        processAverageFlightDelay(lines, outputDir);
 
         ctx.stop();
     }
 
     private static void processFlightDelayCounts(JavaRDD<String> lines, String outputDir) {
 
-        JavaPairRDD<String, Long> carrierCount = lines.mapToPair(string -> processGenericCount(
-                string,
-                CARRIER_DELAY_MINUTES_INDEX,
-                "Carrier Issues"));
-        JavaPairRDD<String, Long> weatherCount = lines.mapToPair(string -> processGenericCount(
-                string,
-                WEATHER_DELAY_MINUTES_INDEX,
-                "Carrier Issues"));
-        JavaPairRDD<String, Long> nasCount = lines.mapToPair(string -> processGenericCount(string,
-                NAS_DELAY_MINUTES_INDEX,
-                "Carrier Issues"));
-        JavaPairRDD<String, Long> securityCount = lines.mapToPair(string -> processGenericCount(
-                string,
-                SECURITY_DELAY_MINUTES_INDEX,
-                "Carrier Issues"));
-        JavaPairRDD<String, Long> lateAircraftCount = lines.mapToPair(string -> processGenericCount(
-                string, LATE_AIRCRAFT_DELAY_MINUTES_INDEX,
-                "Carrier Issues"));
-        JavaPairRDD<String, Long> allDelays = carrierCount.union(weatherCount)
-                .union(nasCount)
-                .union(securityCount)
-                .union(lateAircraftCount);
+        JavaPairRDD<String, Long> allCounts = processAllDelayCounts(lines);
+        JavaPairRDD<String, Long> reducedCounts = allCounts.reduceByKey((x,y) -> x+y);
 
-        SparkUtils.saveCoalescedRDDToJsonFile(allDelays,
+
+        SparkUtils.saveCoalescedRDDToJsonFile(reducedCounts,
                 outputDir + File.separator + "flight_delays_by_reason");
 
     }
@@ -95,7 +75,7 @@ public class FlightDelayReasons {
 
     }
 
-    private static void testFlightDelay(JavaRDD<String> lines, String outputDir)
+    private static void processAverageFlightDelay(JavaRDD<String> lines, String outputDir)
     {
 
         JavaPairRDD<String, Tuple2<Long,Long>> allDelays = processAllDelays(lines);
@@ -110,7 +90,7 @@ public class FlightDelayReasons {
     private static JavaPairRDD<String, Tuple2<Long, Long>> processAllDelays(JavaRDD<String> lines)
     {
 
-        JavaPairRDD<String,Tuple2<Long,Long>> stuff = lines.flatMapToPair(new PairFlatMapFunction<String, String, Tuple2<Long, Long>>()
+        JavaPairRDD<String,Tuple2<Long,Long>> delays = lines.flatMapToPair(new PairFlatMapFunction<String, String, Tuple2<Long, Long>>()
         {
             @Override
             public Iterable<Tuple2<String, Tuple2<Long, Long>>> call(String s) throws Exception
@@ -126,10 +106,28 @@ public class FlightDelayReasons {
             }
         });
 
-        return stuff;
+        return delays;
     }
 
-
+    private static JavaPairRDD<String, Long> processAllDelayCounts(JavaRDD<String> lines)
+    {
+        JavaPairRDD<String, Long> counts = lines.flatMapToPair(new PairFlatMapFunction<String, String, Long>()
+        {
+            @Override
+            public Iterable<Tuple2<String, Long>> call(String s) throws Exception
+            {
+                String[] flightData = s.split(COMMA.pattern());
+                List<Tuple2<String,Long>> results = new ArrayList<>();
+                results.add(processGenericCount(flightData[CARRIER_DELAY_MINUTES_INDEX],"Carrier Delay"));
+                results.add(processGenericCount(flightData[WEATHER_DELAY_MINUTES_INDEX], "Weather Delay"));
+                results.add(processGenericCount(flightData[NAS_DELAY_MINUTES_INDEX],"NAS Delay"));
+                results.add(processGenericCount(flightData[SECURITY_DELAY_MINUTES_INDEX], "Security Delay"));
+                results.add(processGenericCount(flightData[LATE_AIRCRAFT_DELAY_MINUTES_INDEX],"Late Aircraft Delay"));
+                return results;
+            }
+        });
+        return counts;
+    }
 
     private static Tuple2<String,Tuple2<Long,Long>> getSingleReason(String data, String dataName)
     {
@@ -145,18 +143,18 @@ public class FlightDelayReasons {
 
     }
 
-    private static Tuple2<String, Long> processGenericCount(String input, int dataPosition,
+
+    private static Tuple2<String, Long> processGenericCount(String input,
             String dataName) {
-        String[] flightData = input.split(COMMA.pattern());
         try {
-            Long delayExists = Long.parseLong(flightData[dataPosition]);
+            Long delayExists = Long.parseLong(input);
             if (delayExists > 0) {
-                return new Tuple2<>(flightData[dataPosition], 1L);
+                return new Tuple2<>(dataName, 1L);
             } else {
-                return new Tuple2<>(flightData[dataPosition], 0L);
+                return new Tuple2<>(dataName, 0L);
             }
         } catch (NumberFormatException e) {
-            return new Tuple2<>(flightData[dataPosition], 0L);
+            return new Tuple2<>(dataName, 0L);
         }
 
     }
