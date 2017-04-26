@@ -24,7 +24,7 @@ https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_regist
 Two files are needed from this set, MASTER.txt and ACFTREF.txt, and both will need the first row removed before being used.
 The first row contains column headers, and they aren't needed for the spark processing.
 
-Once these files are acquired and modified, put them into hdfs, but in a different folder that the flight data.
+Once these files are acquired and modified, put them into hdfs, but in a different folder than the flight data.
 
 ### Run Flight Data Analysis
 Add /usr/local/spark-1.5.1-bin-hadoop2.6/bin/ to path.
@@ -50,11 +50,11 @@ Delays by Aircraft Model
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.TailNumberDelays flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
     
-Delays by airport
+Delays by airport, outputs top and bottom 50 delayed airports by count and percentage, and average delays (in minutes) across all airports.
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.AirportAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
     
-Delays on Daylight Saving crossover days
+Delays on Daylight Saving crossover days, outputs the average delay (in minutes) for delayed DST flights per year and the percentage of DST flights that are delayed per year
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.DSTAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
 
