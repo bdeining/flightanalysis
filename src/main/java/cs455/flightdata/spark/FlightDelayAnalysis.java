@@ -29,13 +29,6 @@ public class FlightDelayAnalysis {
 
     private static final int YEAR_INDEX = 0;
 
-    private static final int yearIndex = 0;
-
-    private static final int uniqueCarrierCodeIndex = 8;
-
-    private static final int isCancelledIndex = 21;
-    private static final int cancellationCode = 22;
-
     public static void main(String[] args) throws Exception {
 
         if (args.length != 2) {
@@ -53,35 +46,6 @@ public class FlightDelayAnalysis {
         processFlightDelaysPerDayOfTheWeek(lines, outputDir);
         processFlightDelaysPerDayOfTheMonth(lines, outputDir);
         processFlightDelaysPerMonth(lines, outputDir);
-
-
-        // flight cancellation
-
-        JavaRDD<FlightInfo> flightInfo = lines.map(
-                (Function<String, FlightInfo>) s -> {
-                    String[] fields = s.split(",");
-
-                    // create flight info obj
-                    FlightInfo fci = new FlightInfo();
-                    fci.setYear(fields[yearIndex]);
-                    fci.setMonth(fields[MONTH_INDEX]);
-
-                    fci.setCancelCode(fields[cancellationCode]);
-                    fci.setIsCancelled(fields[isCancelledIndex]);
-
-                    fci.setFlightDelay(fields[DELAY_TIME_MINUTES_INDEX]);
-
-                    fci.setUniqueCarrierCode(fields[uniqueCarrierCodeIndex]);
-
-                    return fci;
-                }
-        );
-
-        FlightAnalysisIface flightCancellation = new FlightCancellation();
-        flightCancellation.executeAnalysis(ctx, flightInfo, outputDir);
-
-        NumberOfAirlinesDelay noad = new NumberOfAirlinesDelay();
-        noad.executeAnalysis(ctx, flightInfo, outputDir);
 
         ctx.stop();
     }
