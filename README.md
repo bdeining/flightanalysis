@@ -50,6 +50,10 @@ Delays by Aircraft Model
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.TailNumberDelays flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
     
+Top 50 count, average delay in minutes, and percentage of delays by aircraft model
+
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.DelayByModel flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
+
 Delays by airport, outputs top and bottom 50 delayed airports by count and percentage, and average delays (in minutes) across all airports.
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.AirportAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
