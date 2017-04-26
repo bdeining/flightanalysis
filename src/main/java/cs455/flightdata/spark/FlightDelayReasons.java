@@ -13,6 +13,9 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 
+/**
+ * Outputs JSON versions of Flight Delay reasons using data referenced in README.md
+ */
 public class FlightDelayReasons {
     private static final Pattern COMMA = Pattern.compile(",");
 
@@ -75,6 +78,11 @@ public class FlightDelayReasons {
 
     }
 
+    /**
+     * Rather than go through all of the data twice, code changed to go through only once.
+     * @param lines
+     * @param outputDir
+     */
     private static void processAverageFlightDelay(JavaRDD<String> lines, String outputDir)
     {
 
@@ -87,6 +95,11 @@ public class FlightDelayReasons {
 
     }
 
+    /**
+     * Since delay information is all on one line, we need to flatMapToPair, and create a List of delays which can be reduced later.
+     * @param lines
+     * @return
+     */
     private static JavaPairRDD<String, Tuple2<Long, Long>> processAllDelays(JavaRDD<String> lines)
     {
 
@@ -109,6 +122,11 @@ public class FlightDelayReasons {
         return delays;
     }
 
+    /**
+     * Delay counts reside on the same line, so a flatMapToPair will allow us to break them out into different Tuple2s
+     * @param lines
+     * @return
+     */
     private static JavaPairRDD<String, Long> processAllDelayCounts(JavaRDD<String> lines)
     {
         JavaPairRDD<String, Long> counts = lines.flatMapToPair(new PairFlatMapFunction<String, String, Long>()
@@ -129,6 +147,12 @@ public class FlightDelayReasons {
         return counts;
     }
 
+    /**
+     * Get, and format, one single Delay reason
+     * @param data
+     * @param dataName
+     * @return
+     */
     private static Tuple2<String,Tuple2<Long,Long>> getSingleReason(String data, String dataName)
     {
         try
@@ -143,7 +167,12 @@ public class FlightDelayReasons {
 
     }
 
-
+    /**
+     * Get, and format, one Delay count
+     * @param input
+     * @param dataName
+     * @return
+     */
     private static Tuple2<String, Long> processGenericCount(String input,
             String dataName) {
         try {
