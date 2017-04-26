@@ -1,24 +1,19 @@
 package cs455.flightdata.spark.distance_impact;
 
-import cs455.flightdata.spark.FlightInfo;
-import cs455.flightdata.spark.SparkUtils;
-import cs455.flightdata.spark.flight_cancellation.FlightCancellation;
+import java.io.File;
+import java.io.Serializable;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
+
+import cs455.flightdata.spark.FlightInfo;
+import cs455.flightdata.spark.SparkUtils;
 import scala.Tuple2;
-import scala.Tuple3;
 
-import java.io.File;
-import java.io.Serializable;
-
-/**
- * Created by scrhoads on 4/25/17.
- */
 public class DistanceImpact implements Serializable {
 
     public static void main(String[] args) {
@@ -41,44 +36,42 @@ public class DistanceImpact implements Serializable {
         ctx.stop();
     }
 
-    public void executeAnalysis(JavaSparkContext ctx, JavaRDD<FlightInfo> allFlights, String outputDir) {
+    public void executeAnalysis(JavaSparkContext ctx, JavaRDD<FlightInfo> allFlights,
+            String outputDir) {
 
         //
         // look at distance groupings of 500 mi (e.g. 0-500, 501-1000 .... >5000
         //
 
         // get all flights grouping
-        JavaPairRDD<String, Long> allFlightsDistanceGroupRdd = allFlights.mapToPair(
-                (PairFunction<FlightInfo, String, Long>) fci ->
-                        new Tuple2<>(distanceGroupingName(fci.getDistance()), new Long(1))
-        ).reduceByKey(
-                (l1, l2) -> l1 + l2
-        );
+        JavaPairRDD<String, Long> allFlightsDistanceGroupRdd =
+                allFlights.mapToPair((PairFunction<FlightInfo, String, Long>) fci -> new Tuple2<>(
+                                distanceGroupingName(fci.getDistance()),
+                                new Long(1)))
+                        .reduceByKey((l1, l2) -> l1 + l2);
 
         // find cancelled flights
-        JavaPairRDD<String, Long> onlyCancelledGroups = allFlights.filter(
-                (Function<FlightInfo, Boolean>) s -> s.getIsCancelled() == 1
-        ).mapToPair(
-                (PairFunction<FlightInfo, String, Long>) fci ->
-                        new Tuple2<>(distanceGroupingName(fci.getDistance()), new Long(1))
-        ).reduceByKey(
-                (l1, l2) -> l1 + l2
-        );
-
+        JavaPairRDD<String, Long> onlyCancelledGroups =
+                allFlights.filter((Function<FlightInfo, Boolean>) s -> s.getIsCancelled() == 1)
+                        .mapToPair((PairFunction<FlightInfo, String, Long>) fci -> new Tuple2<>(
+                                        distanceGroupingName(fci.getDistance()),
+                                        new Long(1)))
+                        .reduceByKey((l1, l2) -> l1 + l2);
 
         // do the same but for delayed flights
-        JavaPairRDD<String, Long> onlyDelayedFlights = allFlights.filter(
-                (Function<FlightInfo, Boolean>) fci -> FlightInfo.hasDelay(fci.getFlightDelay())
-        ).mapToPair(
-                (PairFunction<FlightInfo, String, Long>) fci ->
-                        new Tuple2<>(distanceGroupingName(fci.getDistance()), new Long(1))
-        ).reduceByKey(
-                (l1, l2) -> l1 + l2
-        );
+        JavaPairRDD<String, Long> onlyDelayedFlights =
+                allFlights.filter((Function<FlightInfo, Boolean>) fci -> FlightInfo.hasDelay(fci.getFlightDelay()))
+                        .mapToPair((PairFunction<FlightInfo, String, Long>) fci -> new Tuple2<>(
+                                        distanceGroupingName(fci.getDistance()),
+                                        new Long(1)))
+                        .reduceByKey((l1, l2) -> l1 + l2);
 
         // join this data with existing all flight and cancelled
-        JavaPairRDD<String, Iterable<Long>> allCancelledDelayedDistGroups =
-                ctx.union(allFlightsDistanceGroupRdd, onlyCancelledGroups, onlyDelayedFlights).groupByKey();
+        JavaPairRDD<String, Iterable<Long>> allCancelledDelayedDistGroups = ctx.union(
+                allFlightsDistanceGroupRdd,
+                onlyCancelledGroups,
+                onlyDelayedFlights)
+                .groupByKey();
 
         // save this data set out
         SparkUtils.saveCoalescedRDDToJsonFile(allCancelledDelayedDistGroups,
@@ -92,7 +85,7 @@ public class DistanceImpact implements Serializable {
 
         int distance = -1;
 
-        if(!distanceStr.equals("NA")) {
+        if (!distanceStr.equals("NA")) {
 
             try {
                 distance = Integer.parseInt(distanceStr);

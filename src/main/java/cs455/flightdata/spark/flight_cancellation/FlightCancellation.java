@@ -17,8 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by scrhoads on 4/19/17.
- *
  * Outputs csvs that look at the counts for flight cancellation broken down by:
  * all time, year, month, day, year-month, year-month-day
  *

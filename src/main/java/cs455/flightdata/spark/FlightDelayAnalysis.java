@@ -12,7 +12,6 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
-import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;
 
 public class FlightDelayAnalysis {
@@ -28,12 +27,6 @@ public class FlightDelayAnalysis {
     private static final int DAY_OF_WEEK_INDEX = 3;
 
     private static final int YEAR_INDEX = 0;
-
-    private static final int UNIQUE_CARRIER_CODE_INDEX = 8;
-
-    private static final int IS_CANCELLED_INDEX = 21;
-
-    private static final int CANCELLATION_CODE = 22;
 
     public static void main(String[] args) throws Exception {
 
@@ -56,25 +49,7 @@ public class FlightDelayAnalysis {
 
         // flight cancellation
 
-        JavaRDD<FlightInfo> flightInfo = lines.map(
-                (Function<String, FlightInfo>) s -> {
-                    String[] fields = s.split(",");
-
-                    // create flight info obj
-                    FlightInfo fci = new FlightInfo();
-                    fci.setYear(fields[YEAR_INDEX]);
-                    fci.setMonth(fields[MONTH_INDEX]);
-
-                    fci.setCancelCode(fields[CANCELLATION_CODE]);
-                    fci.setIsCancelled(fields[IS_CANCELLED_INDEX]);
-
-                    fci.setFlightDelay(fields[DELAY_TIME_MINUTES_INDEX]);
-
-                    fci.setUniqueCarrierCode(fields[UNIQUE_CARRIER_CODE_INDEX]);
-
-                    return fci;
-                }
-        );
+        JavaRDD<FlightInfo> flightInfo = SparkUtils.getFlightInfoRddFromLines(lines);
 
         FlightAnalysisIface flightCancellation = new FlightCancellation();
         flightCancellation.executeAnalysis(ctx, flightInfo, outputDir);
