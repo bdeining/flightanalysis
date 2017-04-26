@@ -1,21 +1,21 @@
 package cs455.flightdata.spark;
 
+import java.util.List;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import scala.Tuple2;
 
-import java.util.List;
+import scala.Tuple2;
 
 public class DSTAnalysis {
 
     public void analyze(String inputDir, String outputDir, JavaSparkContext context) {
         JavaRDD<String> lines = context.textFile(inputDir);
 
-        JavaRDD<String> onlyDST = lines.filter(
-                (Function<String, Boolean>) s -> {
+        JavaRDD<String> onlyDST = lines.filter((Function<String, Boolean>) s -> {
                     if (s.contains("1987,4,5") ||
                             s.contains("1987,10,25") ||
                             s.contains("1988,4,3") ||
@@ -59,8 +59,7 @@ public class DSTAnalysis {
                             s.contains("2007,3,11") ||
                             s.contains("2007,11,4") ||
                             s.contains("2008,3,9") ||
-                            s.contains("2008,11,2")
-                            ) {
+                            s.contains("2008,11,2")) {
                         try {
                             Integer.parseInt(s.split(",")[15]); //ignore result, just remove "NA" lines
                             //and include all flights
@@ -71,16 +70,14 @@ public class DSTAnalysis {
                     } else {
                         return false;
                     }
-                }
-        );
-
+                });
 
         /**
          * a. Average delay amount on DST start/end per year
          */
 
-        JavaRDD<String> delayedDST = onlyDST.filter(
-                (Function<String, Boolean>) delays -> Integer.parseInt(delays.split(",")[15]) > 15);
+        JavaRDD<String> delayedDST = onlyDST.filter((Function<String, Boolean>) delays ->
+                Integer.parseInt(delays.split(",")[15]) > 15);
 
         JavaPairRDD<String, Tuple2<Long, Long>> combineRDDs =
                 delayedDST.mapToPair((String line) -> {
@@ -88,12 +85,14 @@ public class DSTAnalysis {
                     long delayAmount = Long.parseLong(line.split(",")[15]);
                     long count = 1L;
                     return new Tuple2<>(dst, new Tuple2<>(delayAmount, count));
-                }).reduceByKey((Tuple2<Long, Long> tuple1, Tuple2<Long, Long> tuple2)
-                        -> new Tuple2<>(tuple1._1 + tuple2._1, tuple1._2 + tuple2._2));
+                })
+                        .reduceByKey((Tuple2<Long, Long> tuple1, Tuple2<Long, Long> tuple2) -> new Tuple2<>(
+                                tuple1._1 + tuple2._1,
+                                tuple1._2 + tuple2._2));
 
         JavaPairRDD<String, Double> answerRDD =
-                combineRDDs.mapValues((Tuple2<Long, Long> tuple1)
-                        -> new Double(tuple1._1 / (tuple1._2)));
+                combineRDDs.mapValues((Tuple2<Long, Long> tuple1) -> new Double(
+                        tuple1._1 / (tuple1._2)));
 
         SparkUtils.saveCoalescedRDDToJsonFile(answerRDD, outputDir + "/dst-average");
         List<Tuple2<String, Double>> answer = answerRDD.collect();
@@ -102,28 +101,28 @@ public class DSTAnalysis {
          * b. Percentage of DST flights delayed per year
          */
 
-        JavaPairRDD<String, Tuple2<Double, Double>> percentRDD =
-                onlyDST.mapToPair((String s) -> {
-                    String allDST = s.split(",")[0];
-                    double delayedFlightCount = 0;
-                    double totalFlightCount;
-                    if (Integer.parseInt(s.split(",")[15]) > 15) {
-                        delayedFlightCount = 1;
-                        totalFlightCount = 1;
-                    } else {
-                        totalFlightCount = 1;
-                    }
-                    return new Tuple2<>(allDST, new Tuple2<>(delayedFlightCount, totalFlightCount));
-                }).reduceByKey((Tuple2<Double, Double> tupleOne, Tuple2<Double, Double> tupleTwo)
-                        -> new Tuple2<>(tupleOne._1 + tupleTwo._1, tupleOne._2 + tupleTwo._2));
+        JavaPairRDD<String, Tuple2<Double, Double>> percentRDD = onlyDST.mapToPair((String s) -> {
+            String allDST = s.split(",")[0];
+            double delayedFlightCount = 0;
+            double totalFlightCount;
+            if (Integer.parseInt(s.split(",")[15]) > 15) {
+                delayedFlightCount = 1;
+                totalFlightCount = 1;
+            } else {
+                totalFlightCount = 1;
+            }
+            return new Tuple2<>(allDST, new Tuple2<>(delayedFlightCount, totalFlightCount));
+        })
+                .reduceByKey((Tuple2<Double, Double> tupleOne, Tuple2<Double, Double> tupleTwo) -> new Tuple2<>(
+                        tupleOne._1 + tupleTwo._1,
+                        tupleOne._2 + tupleTwo._2));
 
         JavaPairRDD<String, Double> percentDSTDelay =
-                percentRDD.mapValues((Tuple2<Double, Double> percentTuple)
-                        -> new Double((percentTuple._1 * 100d) / (percentTuple._2)));
+                percentRDD.mapValues((Tuple2<Double, Double> percentTuple) -> new Double(
+                        (percentTuple._1 * 100d) / (percentTuple._2)));
 
         SparkUtils.saveCoalescedRDDToJsonFile(percentDSTDelay, outputDir + "/dst-percent");
         List<Tuple2<String, Double>> percentList = percentDSTDelay.collect();
-
 
         /**
          * Print answers

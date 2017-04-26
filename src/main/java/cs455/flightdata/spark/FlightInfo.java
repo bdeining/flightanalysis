@@ -4,21 +4,26 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by scrhoads on 4/23/17.
- */
 public class FlightInfo implements Serializable {
-    String cancelCode;
-    Integer isCancelled;
-    String year;
-    String month;
-    String uniqueCarrierCode;
-    String flightDelay;
-    String tailNum;
-    String distance;
+    private String cancelCode;
+
+    private Integer isCancelled;
+
+    private String year;
+
+    private String month;
+
+    private String uniqueCarrierCode;
+
+    private String flightDelay;
+
+    private String tailNum;
+
+    private String distance;
 
     private static final long serialVersionUID = 1L;
-    public static Map<String, String> codeToStringMap = new HashMap<>();
+
+    private static Map<String, String> codeToStringMap = new HashMap<>();
 
     static {
         codeToStringMap.put("A", "Carrier");
@@ -27,8 +32,6 @@ public class FlightInfo implements Serializable {
         codeToStringMap.put("D", "Security");
         codeToStringMap.put("NA", "Not Available");
     }
-
-    public FlightInfo() {}
 
     public String getCancelCode() {
         return cancelCode;

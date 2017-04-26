@@ -17,14 +17,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by scrhoads on 4/19/17.
- *
  * Outputs csvs that look at the counts for flight cancellation broken down by:
  * all time, year, month, day, year-month, year-month-day
  *
  * relevant indexes are: 21 - isCancelled == 1, 22 - cancellation code: A-Carrier, B-Weather, C-National Air System
  */
-public class FlightCancellation implements Serializable {
+public class FlightCancellation implements FlightAnalysisIface, Serializable {
 
     public static void main(String[] args) {
         if (args.length != 2) {
