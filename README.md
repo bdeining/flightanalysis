@@ -42,7 +42,13 @@ Also provides information on delays by aircraft model.
    
     ``` spark-submit --master yarn --class cs455.flightdata.spark.number_airlines_impact.NumberOfAirlinesDelay flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
 
----- todo put in brief overview of areas your code ----
+Delays by year, day of the week, day of the month
+
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.FlightDelayAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
+
+Delays by Aircraft Model
+
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.TailNumberDelays flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
 
 ### Visualization
 
