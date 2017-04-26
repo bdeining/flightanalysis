@@ -1,6 +1,5 @@
 package cs455.flightdata.spark.flight_cancellation;
 
-import cs455.flightdata.spark.FlightAnalysisIface;
 import cs455.flightdata.spark.FlightInfo;
 import cs455.flightdata.spark.SparkUtils;
 import org.apache.spark.SparkConf;
@@ -22,7 +21,7 @@ import java.util.List;
  *
  * relevant indexes are: 21 - isCancelled == 1, 22 - cancellation code: A-Carrier, B-Weather, C-National Air System
  */
-public class FlightCancellation implements FlightAnalysisIface, Serializable {
+public class FlightCancellation implements Serializable {
 
     public static void main(String[] args) {
         if (args.length != 2) {
