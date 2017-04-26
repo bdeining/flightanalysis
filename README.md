@@ -49,6 +49,14 @@ Delays by year, day of the week, day of the month
 Delays by Aircraft Model
 
     ``` spark-submit --master yarn --class cs455.flightdata.spark.TailNumberDelays flight_analysis.jar <flight-data-input-dir> <output-dir> <master-file-location> <ACFTREF-file-location>```
+    
+Delays by airport
+
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.AirportAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
+    
+Delays on Daylight Saving crossover days
+
+    ``` spark-submit --master yarn --class cs455.flightdata.spark.DSTAnalysis flight_analysis.jar <flight-data-input-dir> <output-dir>```
 
 ### Visualization
 
