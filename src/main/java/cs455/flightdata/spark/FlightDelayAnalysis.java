@@ -5,8 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import cs455.flightdata.spark.flight_cancellation.FlightCancellation;
-import cs455.flightdata.spark.number_airlines_impact.NumberOfAirlinesDelay;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
