@@ -29,12 +29,11 @@ public class FlightDelayAnalysis {
 
     private static final int YEAR_INDEX = 0;
 
-    private static final int yearIndex = 0;
+    private static final int UNIQUE_CARRIER_CODE_INDEX = 8;
 
-    private static final int uniqueCarrierCodeIndex = 8;
+    private static final int IS_CANCELLED_INDEX = 21;
 
-    private static final int isCancelledIndex = 21;
-    private static final int cancellationCode = 22;
+    private static final int CANCELLATION_CODE = 22;
 
     public static void main(String[] args) throws Exception {
 
@@ -63,15 +62,15 @@ public class FlightDelayAnalysis {
 
                     // create flight info obj
                     FlightInfo fci = new FlightInfo();
-                    fci.setYear(fields[yearIndex]);
+                    fci.setYear(fields[YEAR_INDEX]);
                     fci.setMonth(fields[MONTH_INDEX]);
 
-                    fci.setCancelCode(fields[cancellationCode]);
-                    fci.setIsCancelled(fields[isCancelledIndex]);
+                    fci.setCancelCode(fields[CANCELLATION_CODE]);
+                    fci.setIsCancelled(fields[IS_CANCELLED_INDEX]);
 
                     fci.setFlightDelay(fields[DELAY_TIME_MINUTES_INDEX]);
 
-                    fci.setUniqueCarrierCode(fields[uniqueCarrierCodeIndex]);
+                    fci.setUniqueCarrierCode(fields[UNIQUE_CARRIER_CODE_INDEX]);
 
                     return fci;
                 }
