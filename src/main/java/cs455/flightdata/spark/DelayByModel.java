@@ -1,17 +1,12 @@
 package cs455.flightdata.spark;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
@@ -25,12 +20,8 @@ public class DelayByModel {
 
     private static final int COUNT_TOP_50_LIMIT = 5719;
 
-    private static long AVERAGE_COUNT;
 
-    private static double PERCENT_COUNT;
-
-
-    public JavaPairRDD<String, String> createTailNumMappingRdd(JavaSparkContext ctx,
+    private static Map<String, String> createTailNumMappingRdd(JavaSparkContext ctx,
                                                                String tailNumMasterFile, String manufacturerModelLookupFile) {
 
         JavaRDD<String> tailNumRdd = ctx.textFile(tailNumMasterFile, 1);
@@ -39,7 +30,7 @@ public class DelayByModel {
         // create rdd that's just tailnum and lookup field
         JavaPairRDD<String, String> tailNumMfrModelCodeRdd =
                 tailNumRdd.mapToPair((PairFunction<String, String, String>) fullLine -> {
-                    String nNumber = fullLine.substring(0, 4);
+                    String nNumber = fullLine.substring(0, 5);
                     String mfrModelCode = fullLine.substring(37, 43);
 
                     return new Tuple2<>(mfrModelCode, nNumber);
@@ -62,23 +53,25 @@ public class DelayByModel {
 
         // tailnum to mfrModelCode
         JavaPairRDD<String, String> tailNumToMfr =
-                codeToMfrModelTailRdd.mapToPair((PairFunction<Tuple2<String, Tuple2<String, String>>, String, String>)
-                        valTup -> new Tuple2<>(
+                codeToMfrModelTailRdd.mapToPair((PairFunction<Tuple2<String, Tuple2<String, String>>, String, String>) valTup -> new Tuple2<>(
                         valTup._2()
                                 ._2(),
                         valTup._2()
                                 ._1()));
 
-        return tailNumToMfr;
-
+        Map<String, String> tailNumberMap = new HashMap<>();
+        List<Tuple2<String, String>> tailNumbers = tailNumToMfr.collect();
+        for (Tuple2<String, String> tuple2 : tailNumbers) {
+            tailNumberMap.put(tuple2._1(), tuple2._2());
+        }
+        return tailNumberMap;
     }
 
     public void analyze(String inputDir, String outputDir, JavaSparkContext context,
-                        JavaPairRDD<String, String> tailNumberToModel) {
-        JavaPairRDD<String, String> countNumberToModel = tailNumberToModel;
-        JavaPairRDD<String, String> avgNumberToModel = tailNumberToModel;
-        JavaPairRDD<String, String> percentNumberToModel = tailNumberToModel;
+                        String tailNumberMasterFile, String manufacturerModelLookupFile) {
         JavaRDD<String> lines = context.textFile(inputDir);
+
+        Map<String, String> tailNumMap = createTailNumMappingRdd(context, tailNumberMasterFile, manufacturerModelLookupFile);
 
         JavaRDD<String> onlyDelayed = lines.filter((Function<String, Boolean>) s -> {
                     try {
@@ -106,40 +99,25 @@ public class DelayByModel {
          * Delayed flights
          */
 
-        JavaPairRDD<String, Integer> modelTuple =
-                onlyDelayed.mapToPair((PairFunction<String, String, Integer>) mT -> {
-                        String tailNum = mT.split(",")[10];
-                        if (tailNum != null && tailNum.length() >= 2) {
-                            if (tailNum.charAt(0) == 'N') {
-                                tailNum = tailNum.substring(1, tailNum.length());
-                            }
-                        }
-                    return new Tuple2<>(tailNum, 1);
+        JavaPairRDD<String, Long> modelTuple =
+                onlyDelayed.mapToPair((PairFunction<String, String, Long>) mT -> {
+                        String model = lookupTailNumber(mT.split(",")[10], tailNumMap);
+                    return new Tuple2<>(model, 1L);
                 });
 
-        JavaPairRDD<String, Integer> counts =
-                modelTuple.reduceByKey((Function2<Integer, Integer, Integer>) (integer, integer2) ->
-                        integer + integer2);
+        JavaPairRDD<String, Long> counts =
+                modelTuple.reduceByKey((count1, count2) ->
+                        count1 + count2);
 
-        JavaPairRDD<String, Tuple2<Integer, String>> joinTailsAndModels =
-                counts.join(countNumberToModel);
-
-        JavaPairRDD<String, Integer> replaceTailNumWithModel =
-                joinTailsAndModels.mapToPair((PairFunction<Tuple2<String, Tuple2<Integer, String>>, String, Integer>)
-                tailNumber -> new Tuple2<>(
-                        tailNumber._2()._2(),
-                        tailNumber._2()._1()))
-                .reduceByKey((l1, l2) -> l1 + l2);
-
-        JavaPairRDD<String, Integer> upperCounts =
-                replaceTailNumWithModel.filter((Tuple2<String, Integer> countPair) -> countPair._2()
+        JavaPairRDD<String, Long> upperCounts =
+                counts.filter((Tuple2<String, Long> countPair) -> countPair._2()
                         >= COUNT_TOP_50_LIMIT);
 
         SparkUtils.saveCoalescedRDDToJsonFile(upperCounts, outputDir + "/model-upper-count");
 
-        List<Tuple2<String, Integer>> output = counts.collect();
+        List<Tuple2<String, Long>> output = counts.collect();
 
-        Comparator<Tuple2<String, Integer>> comparator = Comparator.comparing(Tuple2::_2);
+        Comparator<Tuple2<String, Long>> comparator = Comparator.comparing(Tuple2::_2);
 
         Collections.sort(output, comparator);
 
@@ -147,35 +125,22 @@ public class DelayByModel {
          * Average delays
          */
 
-        JavaPairRDD<String, Long> combineRDDs =
+        JavaPairRDD<String, Tuple2<Long, Long>> combineRDDs =
                 onlyDelayed.mapToPair((String line) -> {
-                    String model = line.split(",")[10];
-                    if (model != null && model.length() >= 2) {
-                        if (model.charAt(0) == 'N') {
-                            model = model.substring(1, model.length());
-                        }
-                    }
+                    String model = lookupTailNumber(line.split(",")[10], tailNumMap);
                     long delayAmount = Long.parseLong(line.split(",")[15]);
-                    AVERAGE_COUNT += 1L;
-                    return new Tuple2<>(model, delayAmount);
+                    long averageTotal = 1L;
+                    return new Tuple2<>(model, new Tuple2<>(delayAmount, averageTotal));
                 })
-                        .reduceByKey((t1, t2) -> (t1 + t2));
+                        .reduceByKey((Tuple2<Long, Long> one, Tuple2<Long, Long> two) ->
+                        new Tuple2<>(one._1 + two._1, one._2 + two._2));
 
         JavaPairRDD<String, Double> answerRDD =
-                combineRDDs.mapValues((tup1) -> new Double(
-                        ((tup1) / (AVERAGE_COUNT))));
-
-        JavaPairRDD<String, Tuple2<Double, String>> averageJoin = answerRDD.join(
-                avgNumberToModel);
-
-        JavaPairRDD<String, Double> avgTailNumToModel =
-                averageJoin.mapToPair((PairFunction<Tuple2<String, Tuple2<Double, String>>, String, Double>) tail ->
-                new Tuple2<>(tail._2()
-                ._2(), tail._2()._1()))
-                .reduceByKey((t1, t2) -> t1 + t2);
+                combineRDDs.mapValues((Tuple2<Long, Long> tuple) -> new Double(
+                        ((tuple._1) / (tuple._2))));
 
         JavaPairRDD<String, Double> filteredUpperAverage =
-                avgTailNumToModel.filter((Tuple2<String, Double> averagePair) -> averagePair._2()
+                answerRDD.filter((Tuple2<String, Double> averagePair) -> averagePair._2()
                         >= AVERAGE_TOP_50_LIMIT);
 
         SparkUtils.saveCoalescedRDDToJsonFile(filteredUpperAverage,
@@ -191,39 +156,25 @@ public class DelayByModel {
          * Percent delays
          */
 
-        JavaPairRDD<String, Double> percentRDD =
+        JavaPairRDD<String, Tuple2<Long, Long>> percentRDD =
                 allFlights.mapToPair((String s) -> {
-                    String airplane = s.split(",")[10];
-                    if (airplane != null && airplane.length() >= 2) {
-                        if (airplane.charAt(0) == 'N') {
-                            airplane = airplane.substring(1, airplane.length());
-                        }
-                    }
-                    double delayedFlightCount = 0;
+                    String airplane = lookupTailNumber(s.split(",")[10], tailNumMap);
+                    long delayedFlightCount = 0;
+                    long total;
                     if (Integer.parseInt(s.split(",")[15]) > 15) {
                         delayedFlightCount = 1;
-                        PERCENT_COUNT += 1;
+                        total = 1L;
                     } else {
-                        PERCENT_COUNT += 1;
+                        total = 1L;
                     }
-                    return new Tuple2<>(airplane, delayedFlightCount);
+                    return new Tuple2<>(airplane, new Tuple2<> (delayedFlightCount, total));
                 })
-                        .reduceByKey((per1, per2) -> per1 + per2);
+                        .reduceByKey((Tuple2<Long, Long> tupleOne, Tuple2<Long, Long> tupleTwo)
+                                -> new Tuple2<>(tupleOne._1 + tupleTwo._1, tupleOne._2 + tupleTwo._2));
 
         JavaPairRDD<String, Double> percentModelDelayRDD =
-                percentRDD.mapValues((percent1) -> ((percent1) / (PERCENT_COUNT)));
-
-        JavaPairRDD<String, Tuple2<Double, String>> idToModel =
-                percentModelDelayRDD.join(percentNumberToModel);
-
-        JavaPairRDD<String, Double> tailNumbersIntoModels =
-                idToModel.mapToPair((PairFunction<Tuple2<String, Tuple2<Double, String>>, String, Double>) percentTup ->
-                new Tuple2<>(
-                        percentTup._2()
-                        ._2(),
-                        percentTup._2()
-                        ._1()))
-                .reduceByKey((p1, p2) -> p1 + p2);
+                         percentRDD.mapValues((Tuple2<Long, Long> percentTuple)
+                        -> new Double((percentTuple._1 * 100d) / (percentTuple._2)));
 
         JavaPairRDD<String, Double> filteredUpperModelDelayPercentage = percentModelDelayRDD.filter(
                 (Tuple2<String, Double> upperPercentage) -> upperPercentage._2()
@@ -270,13 +221,24 @@ public class DelayByModel {
         }
     }
 
+    private static String lookupTailNumber(String tailNumber, Map<String, String> tailNumMappings) {
+        if (tailNumber.startsWith("N")) {
+            tailNumber = tailNumber.replace("N", "");
+        }
+
+        String result = tailNumMappings.get(tailNumber);
+        if (result != null) {
+            return result;
+        } else {
+            return "Unavailable";
+        }
+    }
+
     public static void main(String[] args) {
         DelayByModel delayByModel = new DelayByModel();
         SparkConf sparkConf = new SparkConf().setAppName("tp-model-analysis");
         JavaSparkContext context = new JavaSparkContext(sparkConf);
-        JavaPairRDD<String, String> tailNumberToModel =
-                delayByModel.createTailNumMappingRdd(context, args[2], args[3]);
-        delayByModel.analyze(args[0], args[1], context, tailNumberToModel);
+        delayByModel.analyze(args[0], args[1], context, args[2], args[3]);
 
         context.stop();
     }
